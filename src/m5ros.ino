@@ -1,6 +1,5 @@
 //
-// micro-ROS subscriber sample program
-// for M5Stack
+// micro-ROS subscriber program for CyberGear Controller by M5Stack
 //
 #include <M5Stack.h>
 #include <micro_ros_arduino.h>
@@ -21,24 +20,17 @@ rcl_allocator_t allocator;
 rcl_node_t node;
 rcl_timer_t timer;
 
-//#define LED_PIN 13
 
 #define RCCHECK(fn) { rcl_ret_t temp_rc = fn; if((temp_rc != RCL_RET_OK)){error_loop();}}
-#define RCSOFTCHECK(fn) { rcl_ret_t temp_rc = fn; if((temp_rc != RCL_RET_OK)){}}
 
 
 void error_loop(){
-  M5.Lcd.print("Error!!\n");  
-  //while(1){
-  //  digitalWrite(LED_PIN, !digitalRead(LED_PIN));
-  //  delay(1000);
-  //}
+  M5.Lcd.print("Error!!\n");
 }
 
 void subscription_callback(const void * msgin)
 {  
   const std_msgs__msg__Int32 * msg = (const std_msgs__msg__Int32 *)msgin;
-  //digitalWrite(LED_PIN, (msg->data == 0) ? LOW : HIGH);
   M5.Lcd.printf("Data: %d\n", msg->data);  
 }
 
@@ -47,15 +39,9 @@ void setup() {
   M5.Power.begin();
   M5.Lcd.setTextSize(2); 
   M5.Lcd.print("Hello micro-ROS\n");
-  M5.Lcd.print("/micro_ros_arduino_subscriber\n");
+  M5.Lcd.print("/cybergear_subscriber\n");
   
-  // for WiFi
-//   set_microros_wifi_transports("SSID", "PASS", "192.168.xxx.xxx", 8888);
-  // for USB
   set_microros_transports();
-  
-  //pinMode(LED_PIN, OUTPUT);
-  //digitalWrite(LED_PIN, HIGH);  
   
   delay(2000);
 
@@ -72,7 +58,7 @@ void setup() {
     &subscriber,
     &node,
     ROSIDL_GET_MSG_TYPE_SUPPORT(std_msgs, msg, Int32),
-    "micro_ros_arduino_subscriber"));
+    "cybergear_subscriber"));
 
   // create executor
   RCCHECK(rclc_executor_init(&executor, &support.context, 1, &allocator));
