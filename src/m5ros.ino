@@ -11,6 +11,7 @@
 #include <rclc/executor.h>
 
 #include <std_msgs/msg/int32.h>
+#include <std_msgs/msg/float32.h>
 
 #include <mcp_can.h>
 #include "cybergear_controller.hh"
@@ -48,27 +49,12 @@ void check_connect(){
 
 void subscription_callback(const void * msgin)
 {  
-  const std_msgs__msg__Int32 * msg = (const std_msgs__msg__Int32 *)msgin;
-  M5.Lcd.printf("Data: %d\n", msg->data);
-    switch(msg->data) {
-    case 1:  // 上矢印キー
-      controller.send_position_command(0x7F, 10.0f);  // 正回転（速度は10 rad/s）
-      M5.Lcd.setCursor(0, 100);
-      M5.Lcd.println("Forward rotation   ");
-      break;
-      
-    case 2:  // 下矢印キー
-      controller.send_position_command(0x7F, -10.0f);  // 逆回転（速度は-10 rad/s）
-      M5.Lcd.setCursor(0, 100);
-      M5.Lcd.println("Reverse rotation   ");
-      break;
-      
-    default:  // その他のキー
-      controller.send_position_command(0x7F, 0.0f);  // 停止
-      M5.Lcd.setCursor(0, 100);
-      M5.Lcd.println("Stop              ");
-      break;
-  }
+  const std_msgs__msg__Float32 * msg = (const std_msgs__msg__Float32 *)msgin;
+  float speed = msg->data;
+  M5.Lcd.printf("Data: %f\n", speed);
+  controller.send_speed_command(motor_ids, {speed});  // 正回転（速度は10 rad/s）
+  M5.Lcd.setCursor(0, 100);
+  M5.Lcd.println("Forward rotation   ");
 }
 
 void setup() {
@@ -88,7 +74,7 @@ void setup() {
   Serial.begin(115200);
   CAN0.init();
   M5.Lcd.printf("initialize can\n");
-  controller.init(motor_ids, MODE_POSITION, &CAN0);
+  controller.init(motor_ids, MODE_SPEED, &CAN0);
   M5.Lcd.printf("initialize controller\n");
   controller.enable_motors();
   controller.send_position_command(motor_ids, speeds);
@@ -112,8 +98,8 @@ void setup() {
   RCCHECK(rclc_subscription_init_default(
     &subscriber,
     &node,
-    ROSIDL_GET_MSG_TYPE_SUPPORT(std_msgs, msg, Int32),
-    "cybergear_subscriber"));
+    ROSIDL_GET_MSG_TYPE_SUPPORT(std_msgs, msg, Float32),
+    "micro_ros_arduino_subscriber"));
 
   // create executor
   RCCHECK(rclc_executor_init(&executor, &support.context, 1, &allocator));
