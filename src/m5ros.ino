@@ -42,6 +42,32 @@ CybergearController controller = CybergearController(MASTER_CAN_ID);
 #define RCCHECK(fn) { rcl_ret_t temp_rc = fn; if((temp_rc != RCL_RET_OK)){check_connect();}}
 #define RCSOFTCHECK(fn) { rcl_ret_t temp_rc = fn; if((temp_rc != RCL_RET_OK)){}}
 
+// micro_ros_agentの確認用のタイムアウト設定
+#define AGENT_CHECK_TIMEOUT_MS 10000
+#define AGENT_CHECK_INTERVAL_MS 500
+
+bool wait_for_agent() {
+  unsigned long start_time = millis();
+  
+  while (millis() - start_time < AGENT_CHECK_TIMEOUT_MS) {
+    // micro_ros_agentとの接続確認
+    bool agent_available = false;
+    
+    // pingの送信を試みる
+    if (rmw_uros_ping_agent(100, 1) == RMW_RET_OK) {
+      M5.Lcd.printf("micro_ros_agent found!");
+      return true;
+    }
+    
+    M5.Lcd.printf("Waiting for micro_ros_agent...");
+    delay(AGENT_CHECK_INTERVAL_MS);
+  }
+  
+  M5.Lcd.printf("micro_ros_agent not found within timeout period");
+  return false;
+}
+
+
 void check_connect(){
   // update m5 status
   M5.Lcd.print("connecting...");
@@ -71,6 +97,10 @@ void setup() {
   
   // initialize micro-ros
   set_microros_transports();
+  // micro_ros_agentの存在確認
+  while (!wait_for_agent()) {
+    Serial.println("No micro_ros_agent found. Stopping setup.");
+  }
   M5.Lcd.print("initialize micro-ros\n");
 
   //initialize cybergear
