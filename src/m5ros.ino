@@ -17,6 +17,8 @@
 #include "cybergear_can_interface_esp32.hh"
 #include "cybergear_can_interface_mcp.hh"
 
+#include "Adafruit_PWMServoDriver.h"
+
 // micro-ROS settings
 rcl_subscription_t subscriber;
 // std_msgs__msg__Int32 msg;
@@ -32,6 +34,8 @@ rcl_timer_t timer;
 uint8_t MASTER_CAN_ID = 0x00;
 std::vector<uint8_t> motor_ids = {127, 126, 125, 124};
 std::vector<float> speeds = {0.0f, 0.0f, 0.0f, 0.0f};
+std::vector<float> speed_command;
+std::vector<float> servo_command;
 #ifdef USE_ESP32_CAN
 CybergearCanInterfaceEsp32 interface;
 #else
@@ -45,6 +49,24 @@ CybergearController controller = CybergearController(MASTER_CAN_ID);
 // micro_ros_agentの確認用のタイムアウト設定
 #define AGENT_CHECK_TIMEOUT_MS 10000
 #define AGENT_CHECK_INTERVAL_MS 500
+
+// Servo motor settings
+#define SERVO_ADDR 0x40
+#define SERVOMIN  150  // サーボパルス幅の最小値（マイクロ秒）
+#define SERVOMAX  600  // サーボパルス幅の最大値（マイクロ秒）
+#define USMIN     500  // サーボの最小範囲（マイクロ秒）
+#define USMAX     2500 // サーボの最大範囲（マイクロ秒）
+#define SERVO_FREQ 50  // サーボのPWM周波数（Hz）
+#define SERVO_NUM 4 // サーボの数
+
+Adafruit_PWMServoDriver pwm = Adafruit_PWMServoDriver(SERVO_ADDR);
+
+// 角度をパルス幅に変換する関数
+uint16_t angleToPulse(float angle) {
+  // 角度（0〜180）をパルス幅（SERVOMIN〜SERVOMAX）に変換
+  uint16_t pulse = map(angle, 0, 180, SERVOMIN, SERVOMAX);
+  return pulse;
+}
 
 bool wait_for_agent() {
   unsigned long start_time = millis();
@@ -73,16 +95,24 @@ void check_connect(){
   M5.Lcd.print("connecting...");
 }
 
-void subscription_callback(const void * msgin)
-{
+void subscription_callback(const void * msgin){
   const std_msgs__msg__Float32MultiArray * msg = (const std_msgs__msg__Float32MultiArray *)msgin;
   // データをvectorに変換
   std::vector<float> data_vector(msg->data.data, msg->data.data + msg->data.size);
-  // CyberGearController
-  controller.send_speed_command(motor_ids, data_vector);
   // 各要素を表示
   for(size_t i = 0; i < data_vector.size(); i++) {
     M5.Lcd.printf("Data[%d]: %.2f\n", i, data_vector[i]);
+    if(i < motor_ids.size()) {
+      speed_command[i] = data_vector[i];
+    } else {
+      servo_command[i - motor_ids.size()] = data_vector[i];
+    }
+  }
+  // CyberGearController
+  controller.send_speed_command(motor_ids, speed_command);
+  // Servo controller
+  for (int i = 0; i < SERVO_NUM; i++) {
+    pwm.setPWM(i, 0, angleToPulse(servo_command[i]));
   }
 }
 
@@ -112,6 +142,10 @@ void setup() {
   controller.enable_motors();
   controller.send_position_command(motor_ids, speeds);
   M5.Lcd.printf("initialize motor\n");
+
+  //initialize Servo2 module
+  pwm.begin();
+  pwm.setPWMFreq(SERVO_FREQ);
 
   M5.Lcd.print("all initialize");
   delay(1000);
