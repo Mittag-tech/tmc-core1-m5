@@ -30,8 +30,8 @@ rcl_timer_t timer;
 // Cybergear settings
 // setup master can id and motor can id (default cybergear can id is 0x7F)
 uint8_t MASTER_CAN_ID = 0x00;
-std::vector<uint8_t> motor_ids = {0x7F, 0x7E};
-std::vector<float> speeds = {0.0f, 0.0f};
+std::vector<uint8_t> motor_ids = {127, 126, 125, 124};
+std::vector<float> speeds = {0.0f, 0.0f, 0.0f, 0.0f};
 #ifdef USE_ESP32_CAN
 CybergearCanInterfaceEsp32 interface;
 #else
