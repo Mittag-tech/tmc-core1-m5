@@ -195,7 +195,10 @@ void loop() {
   //update m5 status
   M5.Lcd.print("Cybergear Controller\n");
   RCCHECK(rclc_executor_spin_some(&executor, RCL_MS_TO_NS(100)));
-  // delay(1000);
   M5.Lcd.clear(TFT_BLACK);
   M5.Lcd.setCursor(0,0,2);
+  if (!controller.process_packet()){
+    controller.reset_motors();
+    M5.Lcd.print("Reset Motor!\n");
+  }
 }
