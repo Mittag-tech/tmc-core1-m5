@@ -32,10 +32,10 @@ rcl_timer_t timer;
 // Cybergear settings
 // setup master can id and motor can id (default cybergear can id is 0x7F)
 uint8_t MASTER_CAN_ID = 0x00;
-std::vector<uint8_t> motor_ids = {127, 126, 125, 124};
+std::vector<uint8_t> motor_ids = {127, 125, 126, 124};
 std::vector<float> speeds = {0.0f, 0.0f, 0.0f, 0.0f};
 std::vector<float> speed_command = {0.0f, 0.0f, 0.0f, 0.0f};
-std::vector<float> servo_command = {0.0f, 0.0f, 0.0f, 0.0f};
+std::vector<float> servo_command = {0.0f, 0.0f, 0.0f, 0.0f, 0.0f};
 #ifdef USE_ESP32_CAN
 CybergearCanInterfaceEsp32 interface;
 #else
@@ -85,6 +85,8 @@ bool wait_for_agent() {
     }
     
     M5.Lcd.printf("Waiting for micro_ros_agent...");
+    M5.Lcd.clear(TFT_BLACK);
+    M5.Lcd.setCursor(0,0,2);
     delay(AGENT_CHECK_INTERVAL_MS);
   }
   
@@ -96,6 +98,8 @@ bool wait_for_agent() {
 void check_connect(){
   // update m5 status
   M5.Lcd.print("connecting...");
+  M5.Lcd.clear(TFT_BLACK);
+  M5.Lcd.setCursor(0,0,2);
 }
 
 void subscription_callback(const void * msgin){
@@ -116,7 +120,21 @@ void subscription_callback(const void * msgin){
   // Servo controller
   pwm.setPWM(SERVO_CHANNEL, 0, angleToPulse(servo_command[0]));
   pwm.setPWM(ROLLER_CNANNEL, 0, servo_command[1]);
+  if (servo_command[4] >= 1.0) {
+    Serial.begin(115200);
+    Wire.begin();
+    CAN0.init();
+    M5.Lcd.clear(TFT_BLACK);
+    M5.Lcd.setCursor(0,0,2);
+    M5.Lcd.printf("Reset Motors.\n");
+    controller.init(motor_ids, MODE_SPEED, &CAN0);
+    controller.enable_motors();
+    M5.Lcd.printf("Reset CyberGear.\n");
+  } else {
+    ;
+  }
 }
+
 
 void setup() {
   // initialize M5
@@ -137,12 +155,15 @@ void setup() {
 
   //initialize cybergear
   Serial.begin(115200);
+  Wire.begin();
   CAN0.init();
   M5.Lcd.printf("initialize can\n");
+
   controller.init(motor_ids, MODE_SPEED, &CAN0);
   M5.Lcd.printf("initialize controller\n");
+
   controller.enable_motors();
-  controller.send_position_command(motor_ids, speeds);
+  // controller.send_position_command(motor_ids, speeds);
   M5.Lcd.printf("initialize motor\n");
 
   //initialize Servo2 module
@@ -154,13 +175,16 @@ void setup() {
 
   // for roller
   pwm.setPWM(ROLLER_CNANNEL, 0, 1600); //最大値を送信
-  delay(2000);                     //ESCの初期化待ち
+  delay(1000);                     //ESCの初期化待ち
   pwm.setPWM(ROLLER_CNANNEL, 0, 1000); //最小値を送信
-  delay(2000);                     //ESCの初期化待ち
+  delay(1000);                     //ESCの初期化待ち
   pwm.setPWM(ROLLER_CNANNEL, 0, 1060);  //指定の速度で射出モーターを回転
-  delay(10000);
+  delay(1000);
 
   M5.Lcd.print("all initialize");
+  delay(1000);
+  M5.Lcd.clear(TFT_BLACK);
+  M5.Lcd.setCursor(0,0,2);
   delay(1000);
   M5.Lcd.clear(TFT_BLACK);
   M5.Lcd.setCursor(0,0,2);
@@ -193,12 +217,9 @@ void setup() {
 
 void loop() {
   //update m5 status
+  M5.update();
   M5.Lcd.print("Cybergear Controller\n");
   RCCHECK(rclc_executor_spin_some(&executor, RCL_MS_TO_NS(100)));
   M5.Lcd.clear(TFT_BLACK);
   M5.Lcd.setCursor(0,0,2);
-  if (!controller.process_packet()){
-    controller.reset_motors();
-    M5.Lcd.print("Reset Motor!\n");
-  }
 }
