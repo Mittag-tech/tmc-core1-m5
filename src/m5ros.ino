@@ -34,8 +34,8 @@ rcl_timer_t timer;
 uint8_t MASTER_CAN_ID = 0x00;
 std::vector<uint8_t> motor_ids = {127, 126, 125, 124};
 std::vector<float> speeds = {0.0f, 0.0f, 0.0f, 0.0f};
-std::vector<float> speed_command;
-std::vector<float> servo_command;
+std::vector<float> speed_command = {0.0f, 0.0f, 0.0f, 0.0f};
+std::vector<float> servo_command = {0.0f, 0.0f, 0.0f, 0.0f};
 #ifdef USE_ESP32_CAN
 CybergearCanInterfaceEsp32 interface;
 #else
@@ -58,8 +58,11 @@ CybergearController controller = CybergearController(MASTER_CAN_ID);
 #define USMAX     2500 // サーボの最大範囲（マイクロ秒）
 #define SERVO_FREQ 50  // サーボのPWM周波数（Hz）
 #define SERVO_NUM 4 // サーボの数
-
+#define SERVO_CHANNEL 3 
 Adafruit_PWMServoDriver pwm = Adafruit_PWMServoDriver(SERVO_ADDR);
+
+// roller settings
+#define ROLLER_CNANNEL 1
 
 // 角度をパルス幅に変換する関数
 uint16_t angleToPulse(float angle) {
@@ -101,7 +104,7 @@ void subscription_callback(const void * msgin){
   std::vector<float> data_vector(msg->data.data, msg->data.data + msg->data.size);
   // 各要素を表示
   for(size_t i = 0; i < data_vector.size(); i++) {
-    M5.Lcd.printf("Data[%d]: %.2f\n", i, data_vector[i]);
+    M5.Lcd.printf("Data[%d]: %.2f ", i, data_vector[i]);
     if(i < motor_ids.size()) {
       speed_command[i] = data_vector[i];
     } else {
@@ -111,9 +114,8 @@ void subscription_callback(const void * msgin){
   // CyberGearController
   controller.send_speed_command(motor_ids, speed_command);
   // Servo controller
-  for (int i = 0; i < SERVO_NUM; i++) {
-    pwm.setPWM(i, 0, angleToPulse(servo_command[i]));
-  }
+  pwm.setPWM(SERVO_CHANNEL, 0, angleToPulse(servo_command[0]));
+  pwm.setPWM(ROLLER_CNANNEL, 0, servo_command[1]);
 }
 
 void setup() {
@@ -146,6 +148,17 @@ void setup() {
   //initialize Servo2 module
   pwm.begin();
   pwm.setPWMFreq(SERVO_FREQ);
+  int pulse0 = map(0, 0, 180, SERVOMIN, SERVOMAX);
+  pwm.setPWM(SERVO_CHANNEL, 0, pulse0);
+  delay(1000);
+
+  // for roller
+  pwm.setPWM(ROLLER_CNANNEL, 0, 1600); //最大値を送信
+  delay(2000);                     //ESCの初期化待ち
+  pwm.setPWM(ROLLER_CNANNEL, 0, 1000); //最小値を送信
+  delay(2000);                     //ESCの初期化待ち
+  pwm.setPWM(ROLLER_CNANNEL, 0, 1060);  //指定の速度で射出モーターを回転
+  delay(10000);
 
   M5.Lcd.print("all initialize");
   delay(1000);
@@ -182,7 +195,7 @@ void loop() {
   //update m5 status
   M5.Lcd.print("Cybergear Controller\n");
   RCCHECK(rclc_executor_spin_some(&executor, RCL_MS_TO_NS(100)));
-  delay(1000);
+  // delay(1000);
   M5.Lcd.clear(TFT_BLACK);
   M5.Lcd.setCursor(0,0,2);
 }
