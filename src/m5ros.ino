@@ -1,25 +1,5 @@
-//
-// micro-ROS subscriber program for CyberGear Controller by M5Stack
-//
-#include <M5Stack.h>
-#include <micro_ros_arduino.h>
-
-#include <stdio.h>
-#include <rcl/rcl.h>
-#include <rcl/error_handling.h>
-#include <rclc/rclc.h>
-#include <rclc/executor.h>
-
-#include <std_msgs/msg/float32_multi_array.h>
-
-#include <mcp_can.h>
-#include "cybergear_controller.hh"
-#include "cybergear_can_interface_esp32.hh"
-#include "cybergear_can_interface_mcp.hh"
-
-#include "Adafruit_PWMServoDriver.h"
-
 #include "m5ros_const.h"
+#include "utils.h"
 
 // micro-ROS settings
 rcl_subscription_t subscriber;
@@ -43,46 +23,7 @@ CybergearCanInterfaceMcp CAN0;
 #endif
 CybergearController controller = CybergearController(master_can_id);
 
-#define RCCHECK(fn) { rcl_ret_t temp_rc = fn; if((temp_rc != RCL_RET_OK)){check_connect();}}
-
 Adafruit_PWMServoDriver pwm = Adafruit_PWMServoDriver(SERVO_ADDR);
-
-
-// 角度をパルス幅に変換する関数
-uint16_t angleToPulse(float angle) {
-  // 角度（0〜180）をパルス幅（SERVOMIN〜SERVOMAX）に変換
-  uint16_t pulse = map(angle, 0, 180, SERVOMIN, SERVOMAX);
-  return pulse;
-}
-
-bool wait_for_agent() {
-  unsigned long start_time = millis();
-  
-  while (millis() - start_time < AGENT_CHECK_TIMEOUT_MS) {
-    // micro_ros_agentとの接続確認
-    bool agent_available = false;
-    
-    // pingの送信を試みる
-    if (rmw_uros_ping_agent(100, 1) == RMW_RET_OK) {
-      M5.Lcd.printf("micro_ros_agent found!");
-      return true;
-    }
-    
-    M5.Lcd.printf("Waiting for micro_ros_agent...");
-    M5.Lcd.setCursor(10,0,2);
-    delay(AGENT_CHECK_INTERVAL_MS);
-  }
-  
-  M5.Lcd.printf("micro_ros_agent not found within timeout period");
-  return false;
-}
-
-void check_connect(){
-  // update m5 status
-  M5.Lcd.print("connecting...");
-  M5.Lcd.clear(TFT_BLACK);
-  M5.Lcd.setCursor(0,0,2);
-}
 
 void subscription_callback(const void * msgin){
   const std_msgs__msg__Float32MultiArray * msg = (const std_msgs__msg__Float32MultiArray *)msgin;
@@ -100,7 +41,7 @@ void subscription_callback(const void * msgin){
   // CyberGearController
   controller.send_speed_command(motor_ids, speed_command);
   // Servo controller
-  pwm.setPWM(SERVO_CHANNEL, 0, angleToPulse(servo_command[0]));
+  pwm.setPWM(SERVO_CHANNEL, 0, angleToPulse(servo_command[0], SERVOMIN, SERVOMAX));
   pwm.setPWM(ROLLER_CNANNEL, 0, servo_command[1]);
   if (servo_command[4] >= 1.0) {
     Serial.begin(115200);
@@ -129,7 +70,7 @@ void setup() {
   // initialize micro-ros
   set_microros_transports();
   // micro_ros_agentの存在確認
-  while (!wait_for_agent()) {
+  while (!wait_for_agent(TIMEOUT_MS, INTERVAL_MS)) {
     Serial.println("No micro_ros_agent found. Stopping setup.");
   }
   M5.Lcd.print("initialize micro-ros\n");
