@@ -19,9 +19,10 @@
 
 #include "Adafruit_PWMServoDriver.h"
 
+#include "m5ros_const.h"
+
 // micro-ROS settings
 rcl_subscription_t subscriber;
-// std_msgs__msg__Int32 msg;
 std_msgs__msg__Float32MultiArray msg;
 rclc_executor_t executor;
 rclc_support_t support;
@@ -31,38 +32,21 @@ rcl_timer_t timer;
 
 // Cybergear settings
 // setup master can id and motor can id (default cybergear can id is 0x7F)
-uint8_t MASTER_CAN_ID = 0x00;
-std::vector<uint8_t> motor_ids = {127, 125, 126, 124};
-std::vector<float> speeds = {0.0f, 0.0f, 0.0f, 0.0f};
-std::vector<float> speed_command = {0.0f, 0.0f, 0.0f, 0.0f};
-std::vector<float> servo_command = {0.0f, 0.0f, 0.0f, 0.0f, 0.0f};
+uint8_t master_can_id = MASTER_CAN_ID;
+std::vector<uint8_t> motor_ids = MOTOR_IDS;
+std::vector<float> speed_command(motor_ids.size(), 0.0f);
+std::vector<float> servo_command(SERVO_COMMAND_NUM, 0.0f);
 #ifdef USE_ESP32_CAN
 CybergearCanInterfaceEsp32 interface;
 #else
 CybergearCanInterfaceMcp CAN0;
 #endif
-CybergearController controller = CybergearController(MASTER_CAN_ID);
+CybergearController controller = CybergearController(master_can_id);
 
 #define RCCHECK(fn) { rcl_ret_t temp_rc = fn; if((temp_rc != RCL_RET_OK)){check_connect();}}
-#define RCSOFTCHECK(fn) { rcl_ret_t temp_rc = fn; if((temp_rc != RCL_RET_OK)){}}
 
-// micro_ros_agentの確認用のタイムアウト設定
-#define AGENT_CHECK_TIMEOUT_MS 10000
-#define AGENT_CHECK_INTERVAL_MS 500
-
-// Servo motor settings
-#define SERVO_ADDR 0x40
-#define SERVOMIN  150  // サーボパルス幅の最小値（マイクロ秒）
-#define SERVOMAX  600  // サーボパルス幅の最大値（マイクロ秒）
-#define USMIN     500  // サーボの最小範囲（マイクロ秒）
-#define USMAX     2500 // サーボの最大範囲（マイクロ秒）
-#define SERVO_FREQ 50  // サーボのPWM周波数（Hz）
-#define SERVO_NUM 4 // サーボの数
-#define SERVO_CHANNEL 3 
 Adafruit_PWMServoDriver pwm = Adafruit_PWMServoDriver(SERVO_ADDR);
 
-// roller settings
-#define ROLLER_CNANNEL 1
 
 // 角度をパルス幅に変換する関数
 uint16_t angleToPulse(float angle) {
@@ -133,7 +117,6 @@ void subscription_callback(const void * msgin){
   }
 }
 
-
 void setup() {
   // initialize M5
   M5.begin();
@@ -161,7 +144,6 @@ void setup() {
   M5.Lcd.printf("initialize controller\n");
 
   controller.enable_motors();
-  // controller.send_position_command(motor_ids, speeds);
   M5.Lcd.printf("initialize motor\n");
 
   //initialize Servo2 module
