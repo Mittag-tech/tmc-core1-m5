@@ -85,15 +85,13 @@ bool wait_for_agent() {
     }
     
     M5.Lcd.printf("Waiting for micro_ros_agent...");
-    M5.Lcd.clear(TFT_BLACK);
-    M5.Lcd.setCursor(0,0,2);
+    M5.Lcd.setCursor(10,0,2);
     delay(AGENT_CHECK_INTERVAL_MS);
   }
   
   M5.Lcd.printf("micro_ros_agent not found within timeout period");
   return false;
 }
-
 
 void check_connect(){
   // update m5 status
@@ -174,45 +172,29 @@ void setup() {
   delay(1000);
 
   // for roller
-  pwm.setPWM(ROLLER_CNANNEL, 0, 1600); //最大値を送信
-  delay(1000);                     //ESCの初期化待ち
-  pwm.setPWM(ROLLER_CNANNEL, 0, 1000); //最小値を送信
-  delay(1000);                     //ESCの初期化待ち
   pwm.setPWM(ROLLER_CNANNEL, 0, 1060);  //指定の速度で射出モーターを回転
   delay(1000);
+  M5.Lcd.printf("initialize servo motor\n");
 
-  M5.Lcd.print("all initialize");
-  delay(1000);
-  M5.Lcd.clear(TFT_BLACK);
-  M5.Lcd.setCursor(0,0,2);
-  delay(1000);
-  M5.Lcd.clear(TFT_BLACK);
-  M5.Lcd.setCursor(0,0,2);
-
-  delay(2000);
   allocator = rcl_get_default_allocator();
-
   //create init_options
   RCCHECK(rclc_support_init(&support, 0, NULL, &allocator));
-
   // create node
   RCCHECK(rclc_node_init_default(&node, "micro_ros_arduino_node", "", &support));
-
   // create subscriber
-  RCCHECK(rclc_subscription_init_default(
-    &subscriber,
-    &node,
+  RCCHECK(rclc_subscription_init_default(&subscriber, &node,
     ROSIDL_GET_MSG_TYPE_SUPPORT(std_msgs, msg, Float32MultiArray),
     "micro_ros_arduino_subscriber"));
-
   // create executor
   RCCHECK(rclc_executor_init(&executor, &support.context, 1, &allocator));
   RCCHECK(rclc_executor_add_subscription(&executor, &subscriber, &msg, &subscription_callback, ON_NEW_DATA));
+  M5.Lcd.printf("initialize node\n");
 
   // メッセージの初期化
   msg.data.capacity = 10;
   msg.data.size = 0;
   msg.data.data = (float*)malloc(msg.data.capacity * sizeof(float));
+  M5.Lcd.print("all initialize");
 }
 
 void loop() {
