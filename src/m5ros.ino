@@ -41,8 +41,10 @@ void subscription_callback(const void * msgin){
   // CyberGearController
   controller.send_speed_command(motor_ids, speed_command);
   // Servo controller
-  pwm.setPWM(SERVO_CHANNEL, 0, angleToPulse(servo_command[0], SERVOMIN, SERVOMAX));
-  pwm.setPWM(ROLLER_CNANNEL, 0, servo_command[1]);
+  pwm.setPWM(FRONT_SERVO_CHANNEL, 0, angleToPulse(servo_command[0], SERVOMIN, SERVOMAX));
+  pwm.setPWM(FRONT_ROLLER_CHANNEL, 0, servo_command[1]);
+  pwm.setPWM(REAR_SERVO_CHANNEL, 0, angleToPulse(servo_command[2], SERVOMIN, SERVOMAX));
+  pwm.setPWM(REAR_ROLLER_CHANNEL, 0, servo_command[3]);
   if (servo_command[4] >= 1.0) {
     Serial.begin(115200);
     Wire.begin();
@@ -91,11 +93,13 @@ void setup() {
   pwm.begin();
   pwm.setPWMFreq(SERVO_FREQ);
   int pulse0 = map(0, 0, 180, SERVOMIN, SERVOMAX);
-  pwm.setPWM(SERVO_CHANNEL, 0, pulse0);
+  pwm.setPWM(FRONT_SERVO_CHANNEL, 0, pulse0);
+  pwm.setPWM(REAR_SERVO_CHANNEL, 0, pulse0);
   delay(1000);
 
   // for roller
-  pwm.setPWM(ROLLER_CNANNEL, 0, 1060);  //指定の速度で射出モーターを回転
+  pwm.setPWM(FRONT_ROLLER_CHANNEL, 0, 1060);  //指定の速度で射出モーターを回転
+  pwm.setPWM(REAR_ROLLER_CHANNEL, 0, 1060);
   delay(1000);
   M5.Lcd.printf("initialize servo motor\n");
 

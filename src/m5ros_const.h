@@ -15,9 +15,11 @@
 #define SERVOMIN  150  // サーボパルス幅の最小値（マイクロ秒）
 #define SERVOMAX  600  // サーボパルス幅の最大値（マイクロ秒）
 #define SERVO_FREQ 50  // サーボのPWM周波数（Hz）
-#define SERVO_CHANNEL 3 
+#define FRONT_SERVO_CHANNEL 3 
+#define REAR_SERVO_CHANNEL 2
 
 // roller settings
-#define ROLLER_CNANNEL 1
+#define FRONT_ROLLER_CHANNEL 1
+#define REAR_ROLLER_CHANNEL 4
 
 #endif
